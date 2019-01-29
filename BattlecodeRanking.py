@@ -1,7 +1,32 @@
 #On Battlecode Top Finalists
-def optimize(s, wins, losses):    
-    return s - (sum(a/(s+a) for a in losses) - sum(s/(s+a) for a in wins) + s-1)/(1 + sum(a/(s+a)**2 for a in wins) + sum(a/(s+a)**2 for a in losses))
-
+class Player:
+    def __init__(self, name):
+        self.score = 0.5
+        self.temp_score = self.score
+        self.name = name
+    def set_matches(self, matches):
+        self.matches = matches
+        self.wins = [val for val in self.matches if val["winner"] == self]
+        self.losses = [val for val in self.matches if val["loser"] == self]
+    def optimize(self):
+        #self.temp_score = self.score + (sum((1-game["winner"].score)*(game["loser"].score) for game in self.wins) - sum((1-game["winner"].score)*(game["loser"].score) for game in self.losses))/len(self.matches)
+        #print(self.temp_score - self.score)
+        """if(self.name == "Standard Technology"):
+            print("==================")
+            print((sum((1-game["winner"].score)*game["loser"].score for game in self.wins)+0.5))
+            print([((1-game["winner"].score), game["loser"].score, game["winner"].name, game["loser"].name) for game in self.wins])
+            print((sum((1-game["winner"].score)*game["loser"].score for game in self.matches)+1))
+            print([((1-game["winner"].score), game["loser"].score, game["winner"].name) for game in self.matches])
+        """
+        self.temp_score = (sum((1-game["winner"].score)*game["loser"].score for game in self.wins)+0.5)/(sum((1-game["winner"].score)*game["loser"].score for game in self.matches) + 1)
+        #self.score = self.score - sum(g["loser"].score/(g["winner"].score + g["loser"].score) for g in self.matches)/(1 + sum(g["loser"].score/(self.score + g["loser"].score)**2 for g in self.wins) + sum(g["winner"].score/(self.score + g["winner"].score)**2 for g in self.wins))
+        #self.score = abs(self.score)
+    def finalize(self):
+        self.score = self.temp_score
+    def __str__(self):
+        return "{0:40} {1}".format(str(self.name), str(self.score))
+    
+    
 import json
 with open("pretty-rounds.txt") as f:
     data = f.read()
@@ -9,10 +34,12 @@ tournament = json.loads(data)
 games = []
 for r in tournament:
     games+=r["games"]
-players = set()
+player_names = set()
 for g in games:
-    players.add(g["team 1"])
-    players.add(g["team 2"])
+    player_names.add(g["team 1"])
+    player_names.add(g["team 2"])
+players = dict((name, Player(name)) for name in player_names)
+
 player_games = dict()
 player_matches = dict()
 for p in players:
@@ -20,8 +47,22 @@ for p in players:
     player_matches[p] = []
     for game in player_games[p]:
         for match in game["matches"]:
-            player_matches[p].append(match)
-print("\n".join(str(k) for k in player_matches["Double J"]))
+            new_match = dict()
+            new_match["winner"] = players[match["winner"]]
+            new_match["loser"] = players[match["loser"]]
+            
+            player_matches[p].append(new_match)
+            
+for key,val in player_matches.items():
+    players[key].set_matches(val)
+    
+for i in range(10000):
+    for j in players.values():
+        j.optimize()
+        j.finalize()
+        
+s = list(players.values())
+print("\n".join(str(x) for x in sorted(s, key = lambda p:p.score)))
 """
 ################################################################################
 #This makes the rounds into a pretty looking format.
